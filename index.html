@@ -1,0 +1,701 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <title>Orbit Dash — One Tap Arcade</title>
+  <style>
+    :root{
+      --bg:#060914;
+      --card:rgba(255,255,255,.06);
+      --stroke:rgba(255,255,255,.12);
+      --text:#eaf0ff;
+      --muted:#9aa6c3;
+      --accent:#66d9ff;
+      --accent2:#5dffb3;
+      --danger:#ff3b5c;
+      --gold:#ffd166;
+      --shadow: 0 18px 60px rgba(0,0,0,.55);
+      --r:18px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color:var(--text);
+      background: radial-gradient(900px 560px at 20% 0%, #18245d 0%, var(--bg) 60%), var(--bg);
+      overflow:hidden;
+      touch-action:none;
+    }
+    .top{
+      position:fixed; left:0; right:0; top:0; z-index:5;
+      padding:10px 12px;
+      display:flex; justify-content:space-between; gap:10px; align-items:center;
+      background: rgba(6,9,20,.55);
+      backdrop-filter: blur(10px);
+      border-bottom:1px solid rgba(255,255,255,.08);
+    }
+    .brand{display:flex; gap:10px; align-items:center; font-weight:950}
+    .logo{
+      width:34px; height:34px; border-radius:12px;
+      background: linear-gradient(135deg, var(--accent), #7b5cff);
+      box-shadow: 0 14px 40px rgba(102,217,255,.22);
+    }
+    .hud{display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:flex-end}
+    .pill{
+      display:flex; gap:8px; align-items:center;
+      padding:8px 12px;
+      border-radius:999px;
+      background: rgba(0,0,0,.25);
+      border:1px solid rgba(255,255,255,.10);
+      font-weight:900;
+      font-size:13px;
+    }
+    .pill small{color:var(--muted); font-weight:850}
+    .btn{
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.08);
+      color:var(--text);
+      border-radius:14px;
+      padding:9px 12px;
+      font-weight:950;
+      cursor:pointer;
+    }
+    .btn.primary{
+      background: linear-gradient(135deg, rgba(102,217,255,.22), rgba(93,255,179,.14));
+      border-color: rgba(102,217,255,.35);
+    }
+    .btn.danger{background: rgba(255,59,92,.14); border-color: rgba(255,59,92,.35)}
+    canvas{
+      position:fixed; inset:0;
+      width:100vw; height:100vh;
+      display:block;
+    }
+    .toast{
+      position:fixed; left:50%; transform:translateX(-50%);
+      bottom:14px; z-index:5;
+      padding:10px 12px;
+      border-radius:999px;
+      background: rgba(0,0,0,.40);
+      border:1px solid rgba(255,255,255,.12);
+      color:rgba(234,240,255,.92);
+      font-weight:900;
+      font-size:12px;
+      opacity:0; pointer-events:none;
+      transition: opacity .2s ease;
+      max-width:min(520px, 92vw);
+      text-align:center;
+    }
+    .toast.show{opacity:1}
+    /* Modal */
+    .wrap{
+      position:fixed; inset:0; z-index:10;
+      display:none; align-items:center; justify-content:center;
+      background: rgba(0,0,0,.58);
+      padding:14px;
+    }
+    .modal{
+      width:min(560px, 96vw);
+      border-radius: 18px;
+      background: rgba(10,12,24,.86);
+      border:1px solid rgba(255,255,255,.14);
+      box-shadow: 0 30px 100px rgba(0,0,0,.65);
+      backdrop-filter: blur(14px);
+      overflow:hidden;
+    }
+    .modal .pad{padding:14px}
+    .modal h1{margin:0; font-size:18px}
+    .modal p{margin:8px 0 0; color:var(--muted); font-weight:750; line-height:1.35; font-size:13px}
+    .row{display:flex; gap:10px; flex-wrap:wrap; margin-top:12px}
+    .progress{
+      height:10px; border-radius:999px;
+      background: rgba(255,255,255,.08);
+      border:1px solid rgba(255,255,255,.12);
+      overflow:hidden;
+      margin-top:12px;
+      display:none;
+    }
+    .progress > div{
+      height:100%; width:0%;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+    }
+    .hint{font-size:12px; color:var(--muted); font-weight:800; margin-top:10px}
+    /* Banner placeholder (for your ad network later) */
+    .banner{
+      position:fixed; left:0; right:0; bottom:0; z-index:4;
+      padding:10px 12px;
+      background: rgba(0,0,0,.40);
+      border-top:1px solid rgba(255,255,255,.10);
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+    }
+    .adbox{
+      height:42px; min-width:260px; max-width:420px; width: 42vw;
+      border-radius:12px;
+      background: rgba(255,255,255,.06);
+      border:1px dashed rgba(255,255,255,.18);
+      display:flex; align-items:center; justify-content:center;
+      font-weight:950; color:rgba(234,240,255,.8); font-size:12px;
+    }
+    @media (max-width: 600px){
+      .banner{flex-direction:column; align-items:stretch;}
+      .adbox{width:100%;}
+    }
+  </style>
+</head>
+<body>
+  <div class="top">
+    <div class="brand"><div class="logo"></div><div>Orbit Dash</div></div>
+    <div class="hud">
+      <div class="pill">🏁 <span id="score">0</span> <small>Score</small></div>
+      <div class="pill">🏆 <span id="best">0</span> <small>Best</small></div>
+      <div class="pill">🪙 <span id="coins">0</span> <small>Coins</small></div>
+      <button class="btn" id="soundBtn" title="Toggle sound">🔊</button>
+      <button class="btn primary" id="howBtn">How to play</button>
+    </div>
+  </div>
+
+  <canvas id="c"></canvas>
+
+  <div class="banner" id="banner">
+    <div style="color:var(--muted); font-weight:850; font-size:12px">Banner ad placeholder</div>
+    <div class="adbox">Your Banner Ad Slot (AdSense / GAM / Network)</div>
+  </div>
+
+  <div class="toast" id="toast">Toast</div>
+
+  <div class="wrap" id="modalWrap">
+    <div class="modal">
+      <div class="pad">
+        <h1 id="mTitle">Orbit Dash</h1>
+        <p id="mText">Tap anywhere to switch lanes. Avoid red gates. Collect gold orbs.</p>
+        <div class="progress" id="mProg"><div></div></div>
+        <div class="row" id="mActions"></div>
+        <div class="hint" id="mHint">Tip: Short runs + instant restart = more sessions and better ads.</div>
+      </div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  // ====== Utilities ======
+  const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
+  const rand = (a,b)=>a+Math.random()*(b-a);
+  const TAU = Math.PI*2;
+
+  // DPR capped (performance friendly)
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+
+  // ====== Canvas setup ======
+  const canvas = document.getElementById("c");
+  const ctx = canvas.getContext("2d", { alpha:false });
+
+  function resize(){
+    canvas.width = Math.floor(innerWidth * dpr);
+    canvas.height = Math.floor(innerHeight * dpr);
+  }
+  addEventListener("resize", resize, {passive:true});
+  resize();
+
+  // ====== UI ======
+  const scoreEl = document.getElementById("score");
+  const bestEl  = document.getElementById("best");
+  const coinsEl = document.getElementById("coins");
+  const soundBtn = document.getElementById("soundBtn");
+  const howBtn = document.getElementById("howBtn");
+  const banner = document.getElementById("banner");
+  const toast = document.getElementById("toast");
+
+  const modalWrap = document.getElementById("modalWrap");
+  const mTitle = document.getElementById("mTitle");
+  const mText = document.getElementById("mText");
+  const mActions = document.getElementById("mActions");
+  const mProg = document.getElementById("mProg");
+  const mBar = mProg.querySelector("div");
+
+  const store = {
+    get(k,f){
+      try{ const v = localStorage.getItem(k); return v==null?f:JSON.parse(v);}catch{ return f;}
+    },
+    set(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch{} }
+  };
+
+  // economy + best
+  const KEY = "orbit_dash_state_v1";
+  const st = store.get(KEY, { best:0, coins:0, sound:true, premium:false });
+  let best = st.best|0;
+  let coins = st.coins|0;
+  let soundOn = !!st.sound;
+  let premium = !!st.premium;
+
+  function saveState(){ store.set(KEY, { best, coins, sound:soundOn, premium }); }
+  function fmt(n){ return new Intl.NumberFormat().format(Math.floor(n)); }
+  function hud(){
+    scoreEl.textContent = fmt(score);
+    bestEl.textContent = fmt(best);
+    coinsEl.textContent = fmt(coins);
+    soundBtn.textContent = soundOn ? "🔊" : "🔇";
+    banner.style.display = premium ? "none" : "flex";
+  }
+
+  function showToast(msg, ms=1300){
+    toast.textContent = msg;
+    toast.classList.add("show");
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(()=>toast.classList.remove("show"), ms);
+  }
+
+  // ====== Simple sound (no external assets) ======
+  let audioCtx = null;
+  function beep(freq=440, dur=0.06, type="sine", vol=0.06){
+    if(!soundOn) return;
+    try{
+      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      const t0 = audioCtx.currentTime;
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.type = type;
+      o.frequency.setValueAtTime(freq, t0);
+      g.gain.setValueAtTime(vol, t0);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      o.connect(g).connect(audioCtx.destination);
+      o.start(t0);
+      o.stop(t0 + dur);
+    }catch{}
+  }
+
+  soundBtn.addEventListener("click", ()=>{
+    soundOn = !soundOn;
+    saveState(); hud();
+    showToast(soundOn ? "Sound ON" : "Sound OFF");
+    if(soundOn) beep(660,0.05,"square",0.04);
+  });
+
+  // ====== Modal helper ======
+  function openModal({title, text, buttons=[], progressMs=0}){
+    return new Promise(resolve=>{
+      mTitle.textContent = title || "";
+      mText.textContent = text || "";
+      mActions.innerHTML = "";
+      mProg.style.display = progressMs>0 ? "block" : "none";
+      mBar.style.width = "0%";
+
+      let done=false;
+      function close(action){
+        if(done) return;
+        done=true;
+        modalWrap.style.display = "none";
+        resolve(action);
+      }
+
+      for(const b of buttons){
+        const btn = document.createElement("button");
+        btn.className = "btn" + (b.primary ? " primary" : "") + (b.danger ? " danger" : "");
+        btn.textContent = b.text;
+        btn.onclick = ()=>close(b.id);
+        mActions.appendChild(btn);
+      }
+
+      modalWrap.style.display = "flex";
+      modalWrap.onclick = (e)=>{ if(e.target === modalWrap) close("dismiss"); };
+
+      if(progressMs>0){
+        const start = performance.now();
+        const tick = () => {
+          const pct = clamp(((performance.now()-start)/progressMs)*100, 0, 100);
+          mBar.style.width = pct + "%";
+          if(pct < 100) requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      }
+    });
+  }
+
+  howBtn.addEventListener("click", ()=>{
+    openModal({
+      title:"How to play",
+      text:"Tap anywhere to switch between the INNER and OUTER orbit. Avoid red gates. Collect gold orbs. Speed increases automatically. One-hand playable on mobile.",
+      buttons:[{id:"ok", text:"Got it", primary:true}]
+    });
+  });
+
+  // ====== Game state ======
+  let state = "menu"; // menu, playing, over, ad
+  let score = 0;
+  let level = 1;
+  let usedContinue = false;
+  let shieldT = 0;
+
+  const player = {
+    lane: 0, // 0 inner, 1 outer
+    theta: 0,
+    omega: 1.9, // rad/sec
+    rInner: 120,
+    rOuter: 185,
+    size: 10
+  };
+
+  // Entities are placed by angle on a lane
+  const gates = [];
+  const orbs = [];
+
+  function resetRun(){
+    state="playing";
+    score=0; level=1;
+    usedContinue=false;
+    shieldT=0;
+    player.lane=0;
+    player.theta=0;
+    player.omega=1.9;
+    gates.length=0;
+    orbs.length=0;
+    spawnGate(true);
+    spawnGate(true);
+    spawnOrb(true);
+    hud();
+  }
+
+  function spawnGate(initial=false){
+    // Gate is a red arc segment you must NOT touch (avoid by being on other lane at that angle)
+    const lane = Math.random()<0.5 ? 0 : 1;
+    const ahead = initial ? rand(0.8, 1.6) : rand(1.2, 2.4);
+    const theta = player.theta + ahead*TAU; // future position
+    const width = rand(0.20, 0.32); // radians
+    gates.push({ lane, theta, width, passed:false });
+  }
+
+  function spawnOrb(initial=false){
+    const lane = Math.random()<0.65 ? 0 : 1;
+    const ahead = initial ? rand(0.6, 1.4) : rand(0.8, 2.2);
+    const theta = player.theta + ahead*TAU;
+    orbs.push({ lane, theta, taken:false });
+  }
+
+  function normalizeAngle(a){
+    a = a % TAU;
+    if(a<0) a += TAU;
+    return a;
+  }
+
+  function angularDist(a,b){
+    // smallest signed distance from a to b
+    let d = normalizeAngle(b) - normalizeAngle(a);
+    if(d> Math.PI) d -= TAU;
+    if(d<-Math.PI) d += TAU;
+    return d;
+  }
+
+  function toggleLane(){
+    if(state==="menu"){
+      // first interaction unlocks audio on iOS
+      beep(520,0.05,"sine",0.04);
+      resetRun();
+      return;
+    }
+    if(state==="over"){
+      // Restart flow with a simulated interstitial sometimes (more monetization)
+      interstitialBreak("Restart").then(()=>resetRun());
+      return;
+    }
+    if(state!=="playing") return;
+    player.lane = 1 - player.lane;
+    beep(720,0.045,"square",0.04);
+  }
+
+  addEventListener("pointerdown", (e)=>{ e.preventDefault(); toggleLane(); }, {passive:false});
+  addEventListener("keydown", (e)=>{
+    if(e.code==="Space"||e.code==="ArrowUp"||e.code==="Enter") toggleLane();
+  });
+
+  // ====== Monetization hooks (simulated) ======
+  async function interstitialBreak(reason="Break"){
+    if(premium) return {shown:false};
+    state="ad";
+    await openModal({
+      title:"Ad Break",
+      text:`Interstitial ad would show here. (Simulated)\nReason: ${reason}`,
+      progressMs: 2400,
+      buttons:[{id:"ok", text:"Continue", primary:true}]
+    });
+    state="over"; // will be set by caller
+    return {shown:true};
+  }
+
+  async function rewardedBreak(){
+    state="ad";
+    const res = await openModal({
+      title:"Watch Ad to Continue?",
+      text:"Watch a short video to revive with 2 seconds shield. (Simulated rewarded ad)",
+      progressMs: 3200,
+      buttons:[
+        {id:"yes", text:"Get Reward", primary:true},
+        {id:"no", text:"No Thanks"}
+      ]
+    });
+    state="over";
+    return res === "yes";
+  }
+
+  // ====== Game over + continue ======
+  async function gameOver(){
+    state="over";
+    best = Math.max(best, Math.floor(score));
+    saveState();
+    hud();
+    beep(180,0.10,"sawtooth",0.05);
+
+    const buttons = [];
+    if(!usedContinue){
+      buttons.push({id:"cont", text:"Continue (Rewarded)", primary:true});
+    }
+    buttons.push({id:"restart", text:"Restart"});
+    buttons.push({id:"premium", text: premium ? "Premium: ON" : "Go Premium (Hide Ads)"});
+    buttons.push({id:"close", text:"Close", danger:true});
+
+    const action = await openModal({
+      title:"Game Over",
+      text:`Score: ${Math.floor(score)}\nBest: ${best}\n\nTip: Tap to switch lanes earlier.`,
+      buttons
+    });
+
+    if(action === "cont" && !usedContinue){
+      const ok = await rewardedBreak();
+      if(ok){
+        usedContinue = true;
+        shieldT = 2.0;
+        state="playing";
+        showToast("Revived! Shield for 2s");
+        beep(880,0.07,"triangle",0.05);
+        return;
+      } else {
+        // fallthrough to over state
+      }
+    }
+    if(action === "restart"){
+      await interstitialBreak("Restart");
+      resetRun();
+      return;
+    }
+    if(action === "premium"){
+      premium = !premium; saveState(); hud();
+      showToast(premium ? "Premium ON (ads hidden)" : "Premium OFF");
+      // keep game over screen open? restart for simplicity
+      await interstitialBreak("Mode change");
+      resetRun();
+      return;
+    }
+    // close -> return to menu
+    state="menu";
+  }
+
+  // ====== Rendering + update ======
+  let last = performance.now();
+  let spawnGateT = 0;
+  let spawnOrbT = 0;
+
+  function update(dt){
+    if(state !== "playing") return;
+
+    score += dt * 110;
+    const newLevel = 1 + Math.floor(score / 700);
+    if(newLevel !== level){
+      level = newLevel;
+      showToast("Level " + level);
+      beep(600 + level*20, 0.06, "triangle", 0.05);
+    }
+
+    // speed curve
+    player.omega = 1.9 + (level-1)*0.18 + Math.min(1.0, score/4000)*0.55;
+
+    player.theta += player.omega * dt;
+    if(shieldT>0) shieldT = Math.max(0, shieldT - dt);
+
+    // spawn cadence
+    spawnGateT -= dt;
+    const gateEvery = Math.max(0.55, 1.25 - level*0.05);
+    if(spawnGateT <= 0){
+      spawnGateT = gateEvery;
+      spawnGate();
+    }
+
+    spawnOrbT -= dt;
+    const orbEvery = Math.max(0.70, 1.55 - level*0.04);
+    if(spawnOrbT <= 0){
+      spawnOrbT = orbEvery;
+      spawnOrb();
+    }
+
+    // collisions at current angle
+    const lane = player.lane;
+
+    // gates
+    for(const g of gates){
+      if(g.passed) continue;
+      // When player is near the gate angle, check lane collision
+      const d = angularDist(player.theta, g.theta);
+      if(d < -0.35) g.passed = true; // already behind
+      if(Math.abs(d) < g.width){
+        if(g.lane === lane){
+          if(shieldT<=0){
+            return gameOver();
+          } else {
+            g.passed = true;
+            beep(260,0.05,"square",0.04);
+          }
+        }
+      }
+      // reward for passing gate (only once)
+      if(!g._scored && d < 0 && d > -0.08){
+        g._scored = true;
+        score += 35;
+      }
+    }
+
+    // orbs
+    for(const o of orbs){
+      if(o.taken) continue;
+      const d = angularDist(player.theta, o.theta);
+      if(d < -0.35) o.taken = true; // missed -> vanish
+      if(Math.abs(d) < 0.10 && o.lane === lane){
+        o.taken = true;
+        coins += 1;
+        score += 55;
+        saveState();
+        hud();
+        beep(920,0.04,"sine",0.05);
+      }
+    }
+
+    // cleanup
+    while(gates.length && gates[0].passed && angularDist(player.theta, gates[0].theta) < -1.4) gates.shift();
+    while(orbs.length && orbs[0].taken && angularDist(player.theta, orbs[0].theta) < -1.4) orbs.shift();
+  }
+
+  function draw(){
+    const W = canvas.width;
+    const H = canvas.height;
+    ctx.fillStyle = "#060914";
+    ctx.fillRect(0,0,W,H);
+
+    // Center + scale based on min dimension
+    const minD = Math.min(W,H);
+    const cx = W*0.5;
+    const cy = H*0.55;
+    const s = minD/540; // base scale (designed around 540 height)
+    const r0 = player.rInner * s * dpr;
+    const r1 = player.rOuter * s * dpr;
+
+    // subtle stars
+    ctx.fillStyle = "rgba(255,255,255,.06)";
+    for(let i=0;i<18;i++){
+      const x = (Math.sin((i+1)*88.8)*0.5+0.5)*W;
+      const y = (Math.cos((i+1)*42.2)*0.5+0.5)*H;
+      ctx.fillRect(x, y, 2*dpr, 2*dpr);
+    }
+
+    // rings
+    ctx.strokeStyle = "rgba(255,255,255,.10)";
+    ctx.lineWidth = 2*dpr;
+    ctx.beginPath(); ctx.arc(cx,cy,r0,0,TAU); ctx.stroke();
+    ctx.beginPath(); ctx.arc(cx,cy,r1,0,TAU); ctx.stroke();
+
+    // gates (red arcs)
+    for(const g of gates){
+      if(g.passed) continue;
+      const rr = (g.lane===0 ? r0 : r1);
+      ctx.strokeStyle = "rgba(255,59,92,.95)";
+      ctx.lineWidth = 14*dpr;
+      ctx.lineCap = "round";
+      const a = g.theta;
+      ctx.beginPath();
+      ctx.arc(cx, cy, rr, a-g.width, a+g.width);
+      ctx.stroke();
+    }
+
+    // orbs
+    for(const o of orbs){
+      if(o.taken) continue;
+      const rr = (o.lane===0 ? r0 : r1);
+      const a = o.theta;
+      const x = cx + Math.cos(a)*rr;
+      const y = cy + Math.sin(a)*rr;
+      ctx.fillStyle = "rgba(255,209,102,.95)";
+      ctx.beginPath(); ctx.arc(x,y,10*dpr,0,TAU); ctx.fill();
+      ctx.fillStyle = "rgba(255,255,255,.25)";
+      ctx.beginPath(); ctx.arc(x,y,14*dpr,0,TAU); ctx.strokeStyle="rgba(255,255,255,.15)"; ctx.lineWidth=2*dpr; ctx.stroke();
+    }
+
+    // player
+    const rrP = (player.lane===0 ? r0 : r1);
+    const aP = player.theta;
+    const px = cx + Math.cos(aP)*rrP;
+    const py = cy + Math.sin(aP)*rrP;
+
+    // trail
+    ctx.strokeStyle = "rgba(102,217,255,.18)";
+    ctx.lineWidth = 10*dpr;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.arc(cx,cy,rrP, aP-0.65, aP-0.10);
+    ctx.stroke();
+
+    // body
+    ctx.fillStyle = "rgba(102,217,255,.95)";
+    ctx.beginPath(); ctx.arc(px,py, player.size*dpr, 0, TAU); ctx.fill();
+    if(shieldT>0){
+      ctx.strokeStyle = "rgba(93,255,179,.95)";
+      ctx.lineWidth = 4*dpr;
+      ctx.beginPath(); ctx.arc(px,py, (player.size+10)*dpr, 0, TAU); ctx.stroke();
+    }
+
+    // center core
+    ctx.fillStyle = "rgba(123,92,255,.20)";
+    ctx.beginPath(); ctx.arc(cx,cy, 22*dpr, 0, TAU); ctx.fill();
+    ctx.strokeStyle="rgba(255,255,255,.10)";
+    ctx.lineWidth=2*dpr;
+    ctx.beginPath(); ctx.arc(cx,cy, 26*dpr, 0, TAU); ctx.stroke();
+
+    // Menu text
+    if(state==="menu"){
+      ctx.fillStyle = "rgba(234,240,255,.95)";
+      ctx.textAlign="center";
+      ctx.font = `${Math.floor(34*dpr)}px system-ui`;
+      ctx.fillText("Tap to Start", cx, H*0.24);
+      ctx.fillStyle = "rgba(154,166,195,.95)";
+      ctx.font = `${Math.floor(16*dpr)}px system-ui`;
+      ctx.fillText("Tap to switch INNER / OUTER orbit • Avoid red gates • Collect gold", cx, H*0.24 + 34*dpr);
+      ctx.fillText("One-hand playable • Fast runs • Instant restarts", cx, H*0.24 + 58*dpr);
+    }
+  }
+
+  function frame(now){
+    const dt = Math.min(0.033, (now-last)/1000);
+    last = now;
+    update(dt);
+    draw();
+    requestAnimationFrame(frame);
+  }
+
+  // Start state
+  hud();
+  state="menu";
+  openModal({
+    title:"Orbit Dash",
+    text:"Tap anywhere to switch lanes. Avoid red gates. Collect gold orbs.\n\nTip: This is designed to be simple, addictive and replayable.",
+    buttons:[
+      {id:"play", text:"Play", primary:true},
+      {id:"premium", text: premium ? "Premium: ON" : "Go Premium (Hide Ads)"},
+      {id:"sound", text: soundOn ? "Sound: ON" : "Sound: OFF"}
+    ]
+  }).then((a)=>{
+    if(a==="premium"){ premium=!premium; saveState(); hud(); }
+    if(a==="sound"){ soundOn=!soundOn; saveState(); hud(); }
+    // play or dismiss -> start
+    resetRun();
+  });
+
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
